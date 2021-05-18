@@ -21,7 +21,6 @@ var (
 const (
 	strEncodingUTF8  = "utf8"
 	strEncodingUTF16 = "utf16"
-	intSpecial       = "sp"
 )
 
 func getTag(name string, tag reflect.StructTag) (byte, string, bool, error) {
@@ -45,17 +44,15 @@ func getTag(name string, tag reflect.StructTag) (byte, string, bool, error) {
 		}
 		ib = byte(itemID)
 	}
-	if l2 == 2 {
+	if l2 > 1 {
 		v := strings.TrimSpace(strings.ToLower(values[1]))
 		if v == "omitempty" {
 			omitempty = true
 		} else if v == strEncodingUTF8 || v == strEncodingUTF16 {
 			ext = v
-		} else if v == intSpecial {
-			ext = intSpecial
 		}
 	}
-	if l2 == 3 {
+	if l2 > 2 {
 		v := strings.TrimSpace(strings.ToLower(values[2]))
 		if v == "omitempty" {
 			omitempty = true
@@ -110,18 +107,12 @@ func Encode(v interface{}) ([]byte, error) {
 			if rs == 0 && omit {
 				continue
 			}
-			if ext == intSpecial {
-				b = append(b, 0, 4)
-			}
 			bb := make([]byte, 4)
 			binary.BigEndian.PutUint32(bb, uint32(rs))
 			b = append(b, bb...)
 		case int64:
 			if rs == 0 && omit {
 				continue
-			}
-			if ext == intSpecial {
-				b = append(b, 0, 8)
 			}
 			bb := make([]byte, 8)
 			binary.BigEndian.PutUint64(bb, uint64(rs))
@@ -174,7 +165,7 @@ func Encode(v interface{}) ([]byte, error) {
 			if ext != "" && ext != strEncodingUTF8 && ext != strEncodingUTF16 {
 				return nil, ErrUnsupportStrEncoding
 			}
-			if ext == "" || ext == strEncodingUTF8 {
+			if ext == strEncodingUTF8 {
 				bts = []byte(rs)
 			} else {
 				var err error
@@ -260,18 +251,10 @@ func split(data []byte, dict map[byte]*val) (int, error) {
 		v := binary.BigEndian.Uint16(data[begin:end])
 		val.Value.SetInt(int64(v))
 	case int32:
-		if val.Ext == intSpecial {
-			begin += 2
-			end += 2
-		}
 		end += 4
 		v := binary.BigEndian.Uint32(data[begin:end])
 		val.Value.SetInt(int64(v))
 	case int64:
-		if val.Ext == intSpecial {
-			begin += 2
-			end += 2
-		}
 		end += 8
 		v := binary.BigEndian.Uint64(data[begin:end])
 		val.Value.SetInt(int64(v))
@@ -320,7 +303,7 @@ func split(data []byte, dict map[byte]*val) (int, error) {
 		if val.Ext != "" && val.Ext != strEncodingUTF8 && val.Ext != strEncodingUTF16 {
 			return 0, ErrUnsupportStrEncoding
 		}
-		if val.Ext == "" || val.Ext == strEncodingUTF8 {
+		if val.Ext == strEncodingUTF8 {
 			val.Value.SetString(string(data[end : end+int(l)]))
 		} else {
 			var err error
