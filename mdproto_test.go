@@ -42,7 +42,7 @@ func Test2(t *testing.T) {
 	}
 	fmt.Println(bb)
 	var o TestObject
-	err := Decode(bb, &o)
+	err := Unmarshal(bb, &o)
 	if err != nil {
 		t.Error(err)
 		return
@@ -63,7 +63,7 @@ func TestEncode(t *testing.T) {
 	// 	fmt.Printf("%x ", bb)
 	// }
 	// fmt.Println()
-	b, err := Encode(&AAA{
+	b, err := Marshal(&AAA{
 		F1:  1,
 		F2:  32767,
 		F3:  65535,
@@ -79,7 +79,7 @@ func TestEncode(t *testing.T) {
 		return
 	}
 	var c AAA
-	err = Decode(b, &c)
+	err = Unmarshal(b, &c)
 	if err != nil {
 		t.Error(err)
 		return

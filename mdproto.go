@@ -61,7 +61,7 @@ func getTag(name string, tag reflect.StructTag) (byte, string, bool, error) {
 	return ib, ext, omitempty, nil
 }
 
-func Encode(v interface{}) ([]byte, error) {
+func Marshal(v interface{}) ([]byte, error) {
 	s := reflect.ValueOf(v)
 	switch s.Type().Kind() {
 	case reflect.Struct:
@@ -193,7 +193,7 @@ type val struct {
 	Ext   string
 }
 
-func Decode(b []byte, v interface{}) error {
+func Unmarshal(b []byte, v interface{}) error {
 	s := reflect.ValueOf(v)
 	switch s.Type().Kind() {
 	case reflect.Ptr:
