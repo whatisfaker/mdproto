@@ -62,30 +62,36 @@ func getTag(name string, tag reflect.StructTag) (byte, string, bool, error) {
 }
 
 func Marshal(v interface{}) ([]byte, error) {
+	_, b, err := MarshalAndFieldNum(v)
+	return b, err
+}
+
+func MarshalAndFieldNum(v interface{}) (uint, []byte, error) {
 	s := reflect.ValueOf(v)
 	switch s.Type().Kind() {
 	case reflect.Struct:
 	case reflect.Ptr:
 		s = s.Elem()
 		if s.Type().Kind() != reflect.Struct {
-			return nil, ErrUnsupportedStruct
+			return 0, nil, ErrUnsupportedStruct
 		}
 	default:
-		return nil, ErrUnsupportedStruct
+		return 0, nil, ErrUnsupportedStruct
 	}
 	l := s.NumField()
+	validFieldNum := uint(l)
 	var ret []byte
 	uniqueItems := make(map[byte]bool)
 	for i := 0; i < l; i++ {
 		itemID, ext, omit, err := getTag(s.Type().Field(i).Name, s.Type().Field(i).Tag)
 		if err != nil {
-			return nil, err
+			return 0, nil, err
 		}
 		if itemID == 0 {
 			continue
 		}
 		if _, ok := uniqueItems[itemID]; ok {
-			return nil, ErrDuplicateDefinition
+			return 0, nil, ErrDuplicateDefinition
 		}
 		uniqueItems[itemID] = true
 		b := []byte{itemID}
@@ -93,11 +99,13 @@ func Marshal(v interface{}) ([]byte, error) {
 		switch rs := f.(type) {
 		case int8:
 			if rs == 0 && omit {
+				validFieldNum--
 				continue
 			}
 			b = append(b, (byte)(rs))
 		case int16:
 			if rs == 0 && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 2)
@@ -105,6 +113,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case int32:
 			if rs == 0 && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 4)
@@ -112,6 +121,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case int64:
 			if rs == 0 && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 8)
@@ -119,6 +129,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case []int8:
 			if rs == nil && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 2)
@@ -129,6 +140,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			}
 		case []int16:
 			if rs == nil && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 2+len(rs)*2)
@@ -139,6 +151,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case []int32:
 			if rs == nil && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 2+len(rs)*4)
@@ -149,6 +162,7 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case []int64:
 			if rs == nil && omit {
+				validFieldNum--
 				continue
 			}
 			bb := make([]byte, 2+len(rs)*8)
@@ -159,11 +173,12 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 		case string:
 			if rs == "" && omit {
+				validFieldNum--
 				continue
 			}
 			var bts []byte
 			if ext != "" && ext != strEncodingUTF8 && ext != strEncodingUTF16 {
-				return nil, ErrUnsupportStrEncoding
+				return 0, nil, ErrUnsupportStrEncoding
 			}
 			if ext == strEncodingUTF8 {
 				bts = []byte(rs)
@@ -172,7 +187,7 @@ func Marshal(v interface{}) ([]byte, error) {
 				encoder := unicode.UTF16(unicode.BigEndian, unicode.UseBOM).NewEncoder()
 				bts, err = encoder.Bytes([]byte(rs))
 				if err != nil {
-					return nil, fmt.Errorf("convert string to []bytes(UTF16) error %v", err)
+					return 0, nil, fmt.Errorf("convert string to []bytes(UTF16) error %v", err)
 				}
 			}
 			length := len(bts)
@@ -181,11 +196,11 @@ func Marshal(v interface{}) ([]byte, error) {
 			b = append(b, bb...)
 			b = append(b, bts...)
 		default:
-			return nil, fmt.Errorf("unsupport value type %s", s.Field(i).Type().Name())
+			return 0, nil, fmt.Errorf("unsupport value type %s", s.Field(i).Type().Name())
 		}
 		ret = append(ret, b...)
 	}
-	return ret, nil
+	return validFieldNum, ret, nil
 }
 
 type val struct {
