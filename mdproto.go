@@ -62,11 +62,11 @@ func getTag(name string, tag reflect.StructTag) (byte, string, bool, error) {
 }
 
 func Marshal(v interface{}) ([]byte, error) {
-	_, b, err := MarshalAndFieldNum(v)
+	_, b, err := MarshalAndValidFieldsCount(v)
 	return b, err
 }
 
-func MarshalAndFieldNum(v interface{}) (uint, []byte, error) {
+func MarshalAndValidFieldsCount(v interface{}) (uint, []byte, error) {
 	s := reflect.ValueOf(v)
 	switch s.Type().Kind() {
 	case reflect.Struct:
